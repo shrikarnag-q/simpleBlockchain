@@ -1,12 +1,15 @@
 package block
 
 import (
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/bc/utils"
 )
 
 // **************structures*****************//
@@ -95,6 +98,12 @@ func (bc *BlockChain) CreateBlock(nonce int, previousHash [32]byte) *Block {
 func (bc *BlockChain) AddTransaction(sender, receiver string, value float32) {
 	t := NewTransaction(sender, receiver, value)
 	bc.transactionPool = append(bc.transactionPool, t)
+}
+
+func (bc *BlockChain) VerifyTransactionSignature(senderPublicKey *ecdsa.PublicKey, signature *utils.Signature, t *Transaction) bool {
+	m, _ := json.Marshal(t)
+	h := sha256.Sum256([]byte(m))
+	return ecdsa.Verify(senderPublicKey, h[:], signature.R, signature.S)
 }
 
 func (bc *BlockChain) CopyTransactionPool() []*Transaction {
