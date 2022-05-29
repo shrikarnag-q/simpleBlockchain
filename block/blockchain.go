@@ -95,9 +95,26 @@ func (bc *BlockChain) CreateBlock(nonce int, previousHash [32]byte) *Block {
 	return b
 }
 
-func (bc *BlockChain) AddTransaction(sender, receiver string, value float32) {
+func (bc *BlockChain) AddTransaction(sender, receiver string, value float32, senderPublicKey *ecdsa.PublicKey, signature *utils.Signature) bool {
 	t := NewTransaction(sender, receiver, value)
-	bc.transactionPool = append(bc.transactionPool, t)
+	if sender == MINING_SENDER {
+		bc.transactionPool = append(bc.transactionPool, t)
+		return true
+	}
+	if bc.VerifyTransactionSignature(senderPublicKey, signature, t) {
+		/* //have commented this for now. You can uncomment when live
+		if bc.CalculateTotal(sender) < value {
+			log.Println("Error: Insufficient Balance")
+			return false
+		} */
+		bc.transactionPool = append(bc.transactionPool, t)
+		return true
+
+	} else {
+		log.Println("ERROR: Verify Transaction")
+	}
+	return false
+
 }
 
 func (bc *BlockChain) VerifyTransactionSignature(senderPublicKey *ecdsa.PublicKey, signature *utils.Signature, t *Transaction) bool {
@@ -197,7 +214,7 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 // ****************Mining Related ****************//
 
 func (bc *BlockChain) Mining() bool {
-	bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD)
+	bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD, nil, nil)
 	nonce := bc.ProofOfWork()
 	previousHash := bc.LastBlock().Hash()
 	bc.CreateBlock(nonce, previousHash)
