@@ -5,9 +5,13 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/bc/block"
 )
 
 /* We are using multiple ports to replicate multiple servers. Please check all the settings when you go live */
+
+var cache map[string]*block.BlockChain = make(map[string]*block.BlockChain)
 
 type BlockchainServer struct {
 	port uint16
