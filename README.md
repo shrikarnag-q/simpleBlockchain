@@ -2,6 +2,6 @@
 Using Golang <br>
 (Work in Progress)
 <br>
-##Instructions
+## Instructions
 <br>
-#1. Try to use go run *.go <arguments>
+# 1. Try to use go run *.go <arguments>
