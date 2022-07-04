@@ -88,6 +88,17 @@ func (w *Wallet) BlockchainAddress() string {
 
 }
 
+func (w *Wallet) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		PrivateKey        string `json:"private_key"`
+		PublicKey         string `json:"public_key"`
+		BlockchainAddress string `json:"blockchain_address"`
+	}{PrivateKey: w.PrivateKeyStr(),
+		PublicKey:         w.PublicKeyStr(),
+		BlockchainAddress: w.BlockchainAddress(),
+	})
+}
+
 // ********************Transaction in Wallet**********************//
 func NewTransaction(privatekey *ecdsa.PrivateKey, publickey *ecdsa.PublicKey, sender string, receiver string, value float32) *Transaction {
 	return &Transaction{privatekey, publickey, sender, receiver, value}
