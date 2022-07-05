@@ -28,6 +28,14 @@ type Transaction struct {
 	value                     float32
 }
 
+type TransactionRequest struct {
+	SenderPrivateKey           *string `json:"sender_private_key"`
+	SenderPublicKey            *string `json:"sender_public_key"`
+	SenderBlockchainAddress    *string `json:"sender_blockchain_address"`
+	RecipientBlockchainAddress *string `json:"recipient_blockchain_address"`
+	Value                      *string `json:"value"`
+}
+
 func NewWallet() *Wallet {
 	// 1. Create ECDSA PrivateKey (32bytes) and PublicKey (64bytes)
 	w := new(Wallet)
@@ -80,7 +88,7 @@ func (w *Wallet) PublicKey() *ecdsa.PublicKey {
 }
 
 func (w *Wallet) PublicKeyStr() string {
-	return fmt.Sprintf("%x%x", w.publicKey.X.Bytes(), w.publicKey.Y.Bytes())
+	return fmt.Sprintf("%064x%064x", w.publicKey.X.Bytes(), w.publicKey.Y.Bytes())
 }
 
 func (w *Wallet) BlockchainAddress() string {
@@ -121,4 +129,12 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 		Receiver: t.receiverBlockchainAddress,
 		Value:    t.value,
 	})
+}
+
+func (tr TransactionRequest) Validate() bool {
+	if tr.RecipientBlockchainAddress == nil || tr.SenderBlockchainAddress == nil || tr.SenderPrivateKey == nil || tr.SenderPublicKey == nil || tr.Value == nil {
+		return false
+
+	}
+	return true
 }

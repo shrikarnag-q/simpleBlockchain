@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/bc/utils"
 	"github.com/bc/wallet"
 	"html/template"
@@ -55,7 +56,30 @@ func (ws *WalletServer) Wallet(w http.ResponseWriter, r *http.Request) {
 func (ws *WalletServer) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		io.WriteString(w, string(utils.JSONStatus("Success")))
+		decoder := json.NewDecoder(r.Body)
+		var t wallet.TransactionRequest
+		err := decoder.Decode(&t)
+		if err != nil {
+			log.Printf("Error: %v ", err)
+			io.WriteString(w, string(utils.JSONStatus("failed")))
+			return
+		}
+		if !t.Validate() {
+			log.Println("Error: Missing Fields")
+			io.WriteString(w, string(utils.JSONStatus("failed")))
+			return
+		}
+
+		publicKey := utils.PublicKeyFromString(*t.SenderPublicKey)
+		privateKey := utils.PrivateKeyFromString(*t.SenderPrivateKey, publicKey)
+		value, err := strconv.ParseFloat(*t.Value, 32)
+		if err != nil {
+			log.Printf("Error: Parse error -  %v", err)
+			io.WriteString(w, string(utils.JSONStatus("failed")))
+			return
+		}
+		value32 := float32(value)
+		w.Header().Add("Content-Type", "application/json")
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		log.Println("ERROR: Invalid HTTP Method")
