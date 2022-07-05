@@ -112,6 +112,13 @@ func (bc *BlockChain) CreateBlock(nonce int, previousHash [32]byte) *Block {
 	bc.transactionPool = []*Transaction{}
 	return b
 }
+func (bc *BlockChain) CreateTransaction(sender, receiver string, value float32, senderPublicKey *ecdsa.PublicKey, signature *utils.Signature) bool {
+	isTransacted := bc.AddTransaction(sender, receiver, value, senderPublicKey, signature)
+	// TODO
+	// Sync with other servers
+
+	return isTransacted
+}
 
 func (bc *BlockChain) AddTransaction(sender, receiver string, value float32, senderPublicKey *ecdsa.PublicKey, signature *utils.Signature) bool {
 	t := NewTransaction(sender, receiver, value)
@@ -148,6 +155,10 @@ func (bc *BlockChain) CopyTransactionPool() []*Transaction {
 
 	}
 	return transactions
+}
+
+func (bc *BlockChain) TransactionPool() []*Transaction {
+	return bc.transactionPool
 }
 
 func (bc *BlockChain) ValidProof(nonce int, previousHash [32]byte, transactions []*Transaction, difficulty int) bool {
