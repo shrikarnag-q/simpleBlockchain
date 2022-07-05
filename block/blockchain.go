@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bc/utils"
@@ -25,6 +26,9 @@ type BlockChain struct {
 	chain             []*Block
 	blockchainAddress string
 	port              uint16
+	mux               sync.Mutex
+	neighbors         []string
+	muxNeighbors      sync.Mutex
 }
 
 type Transaction struct {
@@ -41,11 +45,21 @@ type TransactionRequest struct {
 	Signature                  *string  `json:"signature"`
 }
 
+type AmountResponse struct {
+	Amount float32 `json:"amount"`
+}
+
 // ************gen****************//
 const (
-	MINING_DIFFICULTY = 3
-	MINING_SENDER     = "I AM A MINER"
-	MINING_REWARD     = 1.0
+	MINING_DIFFICULTY                 = 3
+	MINING_SENDER                     = "I AM A MINER"
+	MINING_REWARD                     = 1.0
+	MINING_TIMER_SEC                  = 30
+	BLOCKCHAIN_PORT_RANGE_START       = 5000
+	BLOCKCHAIN_PORT_RANGE_END         = 5003
+	NEIGHBOR_IP_RANGE_START           = 0
+	NEIGHBOR_IP_RANGE_END             = 1
+	BLOCKCHAIN_NEIGHBOR_SYNC_TIME_SEC = 20
 )
 
 // ******************Block Related****************//
@@ -75,6 +89,32 @@ func NewBlock(nonce int, previousHash [32]byte, transactions []*Transaction) *Bl
 	b.nonce = nonce
 	b.transactions = transactions
 	return b
+}
+
+func (bc *BlockChain) Run() {
+	bc.StartSyncNeighbors()
+}
+
+func (bc *BlockChain) SetNeighbors() {
+	bc.neighbors = utils.FindNeighbours(
+		//utils.GetHost(), // Switch when go live
+		"127.0.0.1",
+		bc.port,
+		NEIGHBOR_IP_RANGE_START,
+		NEIGHBOR_IP_RANGE_END,
+		BLOCKCHAIN_PORT_RANGE_START,
+		BLOCKCHAIN_PORT_RANGE_END,
+	)
+}
+func (bc *BlockChain) SyncNeighbors() {
+	bc.muxNeighbors.Lock()
+	defer bc.muxNeighbors.Unlock()
+	bc.SetNeighbors()
+}
+
+func (bc *BlockChain) StartSyncNeighbors() {
+	bc.SyncNeighbors()
+	_ = time.AfterFunc(time.Second*BLOCKCHAIN_NEIGHBOR_SYNC_TIME_SEC, bc.StartSyncNeighbors)
 }
 
 func (b *Block) Print() {
@@ -215,6 +255,15 @@ func (bc *BlockChain) CalculateTotal(blockchainAddress string) float32 {
 	return totalAmount
 }
 
+func (ar *AmountResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Amount float32 `json:"amount"`
+	}{
+		Amount: ar.Amount,
+	})
+
+}
+
 // ************transactions related******************//
 
 func NewTransaction(sender, receiver string, value float32) *Transaction {
@@ -250,10 +299,22 @@ func (tr TransactionRequest) Validate() bool {
 // ****************Mining Related ****************//
 
 func (bc *BlockChain) Mining() bool {
+	bc.mux.Lock()
+	defer bc.mux.Unlock()
+
+	if len(bc.transactionPool) == 0 {
+		return false
+	}
+
 	bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD, nil, nil)
 	nonce := bc.ProofOfWork()
 	previousHash := bc.LastBlock().Hash()
 	bc.CreateBlock(nonce, previousHash)
 	log.Println("action=mining, status=success")
 	return true
+}
+
+func (bc *BlockChain) StartMining() {
+	bc.Mining()
+	_ = time.AfterFunc(time.Second*MINING_TIMER_SEC, bc.StartMining)
 }

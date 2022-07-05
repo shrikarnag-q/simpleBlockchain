@@ -34,9 +34,9 @@ func (bcs *BlockchainServer) GetBlockChain() *block.BlockChain {
 		minerWallet := wallet.NewWallet()
 		bc = block.NewBlockChain(minerWallet.BlockchainAddress(), bcs.Port())
 		cache["blockchain"] = bc
-		log.Printf("privatekey %v", minerWallet.PrivateKeyStr())
-		log.Printf("publicKey %v", minerWallet.PublicKeyStr())
-		log.Printf("walletAddress %v", minerWallet.BlockchainAddress())
+		//log.Printf("privatekey %v", minerWallet.PrivateKeyStr())
+		//log.Printf("publicKey %v", minerWallet.PublicKeyStr())
+		//log.Printf("walletAddress %v", minerWallet.BlockchainAddress())
 	}
 	return bc
 }
@@ -121,9 +121,42 @@ func (bcs *BlockchainServer) Mine(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (bcs *BlockchainServer) StartMine(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		bc := bcs.GetBlockChain()
+		bc.StartMining()
+		m := utils.JSONStatus("Success")
+		w.Header().Add("Content-Type", "application/json")
+		io.WriteString(w, string(m[:]))
+	default:
+		log.Println("ERROR: Invalid HTTP Method")
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+func (bcs *BlockchainServer) Amount(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		blockchainAddress := r.URL.Query().Get("blockchain_address")
+		amount := bcs.GetBlockChain().CalculateTotal(blockchainAddress)
+		ar := &block.AmountResponse{amount}
+		m, _ := ar.MarshalJSON()
+		w.Header().Add("Content-Type", "application/json")
+		io.WriteString(w, string(m[:]))
+
+	default:
+		log.Println("ERROR: Invalid HTTP Method Request")
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
 func (bcs *BlockchainServer) Run() {
+	bcs.GetBlockChain().Run()
 	http.HandleFunc("/", bcs.GetChain)
 	http.HandleFunc("/transactions", bcs.Transactions)
 	http.HandleFunc("/mine", bcs.Mine)
+	http.HandleFunc("/mine/start", bcs.StartMine)
+	http.HandleFunc("/amount", bcs.Amount)
 	log.Fatal(http.ListenAndServe("0.0.0.0:"+strconv.Itoa(int(bcs.Port())), nil))
 }
