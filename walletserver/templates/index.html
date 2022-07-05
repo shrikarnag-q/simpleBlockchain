@@ -40,6 +40,10 @@
                         data: JSON.stringify(transaction_data),
                         success: function (response){
                             console.info(response)
+                            if ($.parseJSON(response).message == "failed" ||$.parseJSON(response).message == "fail" ){
+                                alert("Transaction Failed")
+                                return
+                            }
                             alert("Transaction Successful! ")
                         },
                         error: function (response){

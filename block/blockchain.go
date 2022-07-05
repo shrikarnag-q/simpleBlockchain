@@ -33,6 +33,14 @@ type Transaction struct {
 	value                     float32
 }
 
+type TransactionRequest struct {
+	SenderPublicKey            *string  `json:"sender_public_key"`
+	SenderBlockchainAddress    *string  `json:"sender_blockchain_address"`
+	RecipientBlockchainAddress *string  `json:"recipient_blockchain_address"`
+	Value                      *float32 `json:"value"`
+	Signature                  *string  `json:"signature"`
+}
+
 // ************gen****************//
 const (
 	MINING_DIFFICULTY = 3
@@ -219,6 +227,13 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 		ReceiverBlockchainAddress: t.receiverBlockchainAddress,
 		Value:                     t.value,
 	})
+}
+
+func (tr TransactionRequest) Validate() bool {
+	if tr.RecipientBlockchainAddress == nil || tr.SenderBlockchainAddress == nil || tr.Value == nil || tr.SenderPublicKey == nil || tr.Signature == nil {
+		return false
+	}
+	return true
 }
 
 // ****************Mining Related ****************//

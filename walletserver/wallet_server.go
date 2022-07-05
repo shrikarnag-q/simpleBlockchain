@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"github.com/bc/block"
 	"github.com/bc/utils"
 	"github.com/bc/wallet"
 	"html/template"
@@ -27,7 +29,7 @@ func (ws *WalletServer) Port() uint16 {
 	return ws.port
 }
 
-func (ws *WalletServer) Gateway(gateway string) string {
+func (ws *WalletServer) Gateway() string {
 	return ws.gateway
 }
 func (ws *WalletServer) Index(w http.ResponseWriter, r *http.Request) {
@@ -74,12 +76,36 @@ func (ws *WalletServer) CreateTransaction(w http.ResponseWriter, r *http.Request
 		privateKey := utils.PrivateKeyFromString(*t.SenderPrivateKey, publicKey)
 		value, err := strconv.ParseFloat(*t.Value, 32)
 		if err != nil {
-			log.Printf("Error: Parse error -  %v", err)
+			log.Printf("ERROR: Parse error -  %v", err)
 			io.WriteString(w, string(utils.JSONStatus("failed")))
 			return
 		}
 		value32 := float32(value)
 		w.Header().Add("Content-Type", "application/json")
+
+		transaction := wallet.NewTransaction(privateKey, publicKey, *t.SenderBlockchainAddress, *t.RecipientBlockchainAddress, value32)
+		signature := transaction.GenerateSignature()
+		signatureStr := signature.String()
+
+		bt := &block.TransactionRequest{
+			t.SenderPublicKey,
+			t.SenderBlockchainAddress,
+			t.RecipientBlockchainAddress,
+			&value32,
+			&signatureStr,
+		}
+		m, _ := json.Marshal(bt)
+		buf := bytes.NewBuffer(m)
+		resp, err := http.Post(ws.Gateway()+"/transactions", "application/json", buf)
+		if err != nil {
+			log.Printf("ERROR: Backserver didn't respond %v", err)
+		}
+		if resp.StatusCode == 201 {
+			io.WriteString(w, string(utils.JSONStatus("Success")))
+			return
+		}
+		io.WriteString(w, string(utils.JSONStatus("Failed")))
+
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		log.Println("ERROR: Invalid HTTP Method")
